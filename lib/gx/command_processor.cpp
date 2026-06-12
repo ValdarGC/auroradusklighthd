@@ -469,6 +469,7 @@ static void push_gx_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Rang
       .indexCount = numIndices,
       .instanceCount = instanceCount,
       .dstAlpha = state.dstAlpha,
+      .stencilRef = state.stencilRef,
   });
 }
 
@@ -699,6 +700,24 @@ void handle_aurora(ByteReader& reader) noexcept {
     gfx::begin_offscreen(width, height);
   } else if (subCmd == GX_AURORA_END_OFFSCREEN) {
     gfx::end_offscreen();
+  } else if (subCmd == GX2_SET_STENCIL_MASK) {
+    g_gxState.stencilReadMask = reader.read<u8>();
+    g_gxState.stencilWriteMask = reader.read<u8>();
+    g_gxState.stencilRef = reader.read<u8>();
+    reader.skip(3); // Back-face masks/reference are currently unused.
+    g_gxState.dirty |= DirtyPipeline;
+  } else if (subCmd == GX2_SET_DEPTH_STENCIL_CONTROL) {
+    g_gxState.depthCompare = reader.read<u8>() != 0;
+    g_gxState.depthUpdate = reader.read<u8>() != 0;
+    g_gxState.depthFunc = static_cast<GXCompare>(reader.read<u8>());
+    g_gxState.stencilEnable = reader.read<u8>() != 0;
+    reader.skip(1); // Back-face stencil enable is currently unused.
+    g_gxState.stencilFunc = static_cast<GXCompare>(reader.read<u8>());
+    g_gxState.stencilOpZPass = reader.read<u8>();
+    g_gxState.stencilOpZFail = reader.read<u8>();
+    g_gxState.stencilOpFail = reader.read<u8>();
+    reader.skip(4); // Back-face function/operations are currently unused.
+    g_gxState.dirty |= DirtyPipeline;
   } else if (subCmd == GX_AURORA_DESTROY_TEXOBJ) {
     evict_texture_object(reader.read<u32>());
   } else if (subCmd == GX_AURORA_DESTROY_TLUT) {

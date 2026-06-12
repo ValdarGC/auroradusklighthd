@@ -105,13 +105,13 @@ void set_efb_targets(RenderPass& pass) {
       webgpu::g_graphicsConfig.msaaSamples > 1 ? webgpu::g_frameBufferResolved.texture : webgpu::g_frameBuffer.texture;
   pass.copySourceView =
       webgpu::g_graphicsConfig.msaaSamples > 1 ? webgpu::g_frameBufferResolved.view : webgpu::g_frameBuffer.view;
-  pass.copySourceDepthView = webgpu::g_depthBuffer.view;
+  pass.copySourceDepthView = webgpu::g_depthBuffer.sampleView;
   if (webgpu::g_graphicsConfig.normalBuffer) {
     pass.copySourceNormalTexture = webgpu::g_normalBuffer.texture;
   }
   pass.msaaSamples = layout.sampleCount;
   pass.hasDepth = true;
-  pass.hasStencil = false;
+  pass.hasStencil = webgpu::g_graphicsConfig.depthStencilSupported;
 }
 
 void set_single_color_target(RenderPass& pass, wgpu::TextureFormat format, const wgpu::Extent3D size,

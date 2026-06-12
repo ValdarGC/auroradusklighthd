@@ -19,6 +19,7 @@ struct GraphicsConfig {
   uint32_t msaaSamples;
   uint16_t textureAnisotropy;
   bool normalBuffer = false;
+  bool depthStencilSupported = false;
 };
 struct TextureWithSampler {
   wgpu::Texture texture;
@@ -26,6 +27,7 @@ struct TextureWithSampler {
   wgpu::Extent3D size;
   wgpu::TextureFormat format;
   wgpu::Sampler sampler;
+  wgpu::TextureView sampleView;
 };
 struct Viewport {
   float left;
