@@ -56,6 +56,7 @@ wgpu::RenderPipeline g_CopyPipeline;
 wgpu::RenderPipeline g_CopyPremultipliedAlphaPipeline;
 wgpu::BindGroup g_CopyBindGroup;
 static AuroraSampler g_Resampler = SAMPLER_BILINEAR;
+static float g_OutputGamma = 1.f;
 static wgpu::BindGroupLayout g_ResampleBindGroupLayout;
 static wgpu::RenderPipeline g_ResamplePipeline;
 static wgpu::Buffer g_ResampleUniformBuffer;
@@ -98,6 +99,7 @@ struct ResampleUniformBlock {
   uint32_t samplerMode = 0;
   float frameWidth = 0.f;
   float frameHeight = 0.f;
+  float gamma = 1.f;
 };
 
 constexpr std::string_view resampleShaderSource = R"(
@@ -105,6 +107,7 @@ struct Uniforms {
     sampler_mode: u32,
     frame_width: f32,
     frame_height: f32,
+    gamma: f32,
 };
 
 struct VertexOutput {
@@ -189,6 +192,10 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     var color = textureSample(t, s, in.uv);
     if (uniforms.sampler_mode == 1u) {
         color = sample_area(in.position);
+    }
+    if (uniforms.gamma != 1.0) {
+        // Output gamma (TPHD brightness option, Wii U GX2SetTVGamma).
+        color = vec4(pow(max(color.rgb, vec3<f32>(0.0)), vec3<f32>(1.0 / uniforms.gamma)), color.a);
     }
     return vec4(color.rgb, 1.0);
 }
@@ -333,6 +340,9 @@ void set_resampler(AuroraSampler sampler) noexcept {
 }
 
 AuroraSampler get_resampler() noexcept { return g_Resampler; }
+
+void set_output_gamma(float gamma) noexcept { g_OutputGamma = gamma > 0.05f ? gamma : 1.f; }
+float get_output_gamma() noexcept { return g_OutputGamma; }
 
 Viewport calculate_present_viewport(uint32_t surface_width, uint32_t surface_height, uint32_t content_width,
                                     uint32_t content_height) noexcept {
@@ -691,6 +701,7 @@ const TextureWithSampler& resample_present_source(const wgpu::CommandEncoder& en
       .samplerMode = sampler_mode(g_Resampler),
       .frameWidth = static_cast<float>(width),
       .frameHeight = static_cast<float>(height),
+      .gamma = g_OutputGamma,
   };
   AURORA_ASSERT(gfx::render_worker::is_worker_thread(), "Present resample queue write must run on the render worker");
   g_queue.WriteBuffer(g_ResampleUniformBuffer, 0, &uniform, sizeof(uniform));

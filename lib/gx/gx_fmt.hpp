@@ -950,6 +950,8 @@ inline std::string format_as(const GXTlutFmt& fmt) {
     return "GX_TL_RGB565";
   case GX_TL_RGB5A3:
     return "GX_TL_RGB5A3";
+  case GX_TL_RGBA8_PC:
+    return "GX_TL_RGBA8_PC";
   default:
     return fmt::format("GXTlutFmt({})", underlying(fmt));
   }

@@ -31,7 +31,7 @@ constexpr uint32_t ReplacementThumbnailDim = 64;
 constexpr uint64_t ReplacementPublishBudgetBytes = 12ull * 1024ull * 1024ull;
 
 size_t texture_source_size(u32 format, u32 width, u32 height, u32 mipCount) noexcept;
-size_t tlut_source_size(u16 numEntries) noexcept;
+size_t tlut_source_size(u16 numEntries, GXTlutFmt format = GX_TL_RGB5A3) noexcept;
 
 void invalidate_bindings() noexcept;
 uint64_t current_bind_generation() noexcept;

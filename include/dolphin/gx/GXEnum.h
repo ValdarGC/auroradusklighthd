@@ -851,6 +851,8 @@ typedef enum {
   GX_TL_IA8,
   GX_TL_RGB565,
   GX_TL_RGB5A3,
+  // PC extension: 32-bit RGBA8 (R, G, B, A bytes) palette entries.
+  GX_TL_RGBA8_PC,
   GX_MAX_TLUTFMT,
 } GXTlutFmt;
 

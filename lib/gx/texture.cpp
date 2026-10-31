@@ -351,7 +351,8 @@ TextureKeys hash_texture_source(const GXTexObj_& obj, const GXTlutObj_* tlut, bo
   }
 
   if (tlut != nullptr) {
-    const size_t tlutBytes = texture::tlut_source_size(tlut->numEntries);
+    const size_t tlutBytes = texture::tlut_source_size(tlut->numEntries, tlut->format);
+    const size_t tlutEntryBytes = tlut->format == GX_TL_RGBA8_PC ? 4 : sizeof(uint16_t);
     CHECK(tlut->data != nullptr && tlutBytes != 0, "invalid TLUT source for content hash");
     keys.contentKey.tlutHash = XXH3_128bits(tlut->data, tlutBytes);
     keys.contentKey.tlutFormat = static_cast<u32>(tlut->format);
@@ -359,8 +360,8 @@ TextureKeys hash_texture_source(const GXTexObj_& obj, const GXTlutObj_* tlut, bo
     s_stats.hashedBytes += tlutBytes;
 
     if (keys.sourceKey.has_value() && minTlutIndex != UINT32_MAX) {
-      const size_t tlutOffset = static_cast<size_t>(minTlutIndex) * sizeof(uint16_t);
-      const size_t referencedBytes = static_cast<size_t>(maxTlutIndex + 1 - minTlutIndex) * sizeof(uint16_t);
+      const size_t tlutOffset = static_cast<size_t>(minTlutIndex) * tlutEntryBytes;
+      const size_t referencedBytes = static_cast<size_t>(maxTlutIndex + 1 - minTlutIndex) * tlutEntryBytes;
       if (tlutOffset + referencedBytes <= tlutBytes) {
         const auto* tlutData = static_cast<const uint8_t*>(tlut->data);
         keys.sourceKey->tlutHash = XXH64(tlutData + tlutOffset, referencedBytes, 0);
@@ -388,7 +389,7 @@ gfx::TextureHandle get_tlut_texture(const GXTlutObj_& tlut) {
     cache.staticTextureUsers.clear();
   }
 
-  const size_t sourceBytes = texture::tlut_source_size(tlut.numEntries);
+  const size_t sourceBytes = texture::tlut_source_size(tlut.numEntries, tlut.format);
   const auto handle = gfx::new_static_texture_2d(tlut.numEntries, 1, 1, gfx::tlut_texture_format(tlut.format),
                                                  {static_cast<const u8*>(tlut.data), sourceBytes}, true, "Loaded TLUT");
   if (tlut.tlutObjId != 0) {
@@ -564,7 +565,9 @@ size_t texture_source_size(u32 format, u32 width, u32 height, u32 mipCount) noex
   return static_cast<size_t>(total);
 }
 
-size_t tlut_source_size(u16 numEntries) noexcept { return static_cast<size_t>(numEntries) * sizeof(u16); }
+size_t tlut_source_size(u16 numEntries, GXTlutFmt format) noexcept {
+  return static_cast<size_t>(numEntries) * (format == GX_TL_RGBA8_PC ? 4 : sizeof(u16));
+}
 
 void invalidate_bindings() noexcept { s_pendingInvalidations.fetch_add(1, std::memory_order_release); }
 
@@ -676,7 +679,7 @@ gfx::TextureHandle resolve_static_palette_texture(const GXTexObj_& obj, const GX
     handle = find_content_texture(keys->contentKey);
     if (!handle) {
       const size_t textureBytes = texture_source_size(obj.format(), obj.width(), obj.height(), obj.mip_count());
-      const size_t tlutBytes = tlut_source_size(tlut.numEntries);
+      const size_t tlutBytes = tlut_source_size(tlut.numEntries, tlut.format);
       auto converted = gfx::convert_texture_palette(obj.format(), obj.width(), obj.height(), obj.mip_count(),
                                                     {static_cast<const u8*>(obj.data), textureBytes}, tlut.format,
                                                     tlut.numEntries, {static_cast<const u8*>(tlut.data), tlutBytes});

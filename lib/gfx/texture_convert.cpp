@@ -661,6 +661,12 @@ ConvertedTexture convert_tlut(u32 format, uint32_t width, ArrayRef<uint8_t> data
   case GX_TF_RGB5A3: // GX_TL_RGB5A3
     converted = DecodeLinear<TextureDecoderRGB5A3>(width, data);
     break;
+  case GX_TF_RGBA8_PC: // GX_TL_RGBA8_PC
+    converted.append(data.data(), std::min<size_t>(data.size(), static_cast<size_t>(width) * 4));
+    if (converted.size() < static_cast<size_t>(width) * 4) {
+      converted.append_zeroes(static_cast<size_t>(width) * 4 - converted.size());
+    }
+    break;
   }
   return {
       .format = wgpu::TextureFormat::RGBA8Unorm,
@@ -680,6 +686,8 @@ GXTexFmt tlut_texture_format(GXTlutFmt format) noexcept {
     return GX_TF_RGB565;
   case GX_TL_RGB5A3:
     return GX_TF_RGB5A3;
+  case GX_TL_RGBA8_PC:
+    return GX_TF_RGBA8_PC;
   }
 }
 

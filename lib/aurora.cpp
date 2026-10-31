@@ -476,3 +476,10 @@ void aurora_set_resampler(AuroraSampler sampler) {
 }
 void aurora_set_timescale(float scale) { aurora::time::set_scale(scale); }
 float aurora_get_timescale() { return aurora::time::scale(); }
+void aurora_set_output_gamma(float gamma) {
+#ifdef AURORA_ENABLE_GX
+  aurora::webgpu::set_output_gamma(gamma);
+#else
+  (void)gamma;
+#endif
+}

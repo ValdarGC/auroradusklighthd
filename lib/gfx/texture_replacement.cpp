@@ -323,7 +323,8 @@ uint32_t texture_base_level_size(const GXTexObj_& obj) noexcept {
 }
 
 ArrayRef<uint8_t> tlut_bytes(const GXTlutObj_& tlut) noexcept {
-  return {static_cast<const uint8_t*>(tlut.data), static_cast<size_t>(tlut.numEntries) * sizeof(uint16_t)};
+  return {static_cast<const uint8_t*>(tlut.data),
+          static_cast<size_t>(tlut.numEntries) * (tlut.format == GX_TL_RGBA8_PC ? 4 : sizeof(uint16_t))};
 }
 
 std::optional<uint64_t> compute_referenced_tlut_hash(const GXTexObj_& obj, ArrayRef<uint8_t> tlutData) noexcept {
