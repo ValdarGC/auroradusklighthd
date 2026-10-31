@@ -45,6 +45,9 @@ struct RawTextureReplacement {
 
 struct ReplacementOptions {
   int32_t priority = 0;
+  /// Load the file on the render thread the first time the texture is used, instead of showing a
+  /// thumbnail and streaming the full texture from the worker threads.
+  bool synchronous = false;
 };
 
 struct ReplacementRegistration {
@@ -82,6 +85,11 @@ struct VirtualFileSource {
 /// Returns ID 0 (invalid) if the filename does not parse or source.read is null.
 ReplacementRegistration register_virtual_replacement(std::string_view path, VirtualFileSource source,
                                                      ReplacementOptions options = {});
+
+/// Registers an encoded (.dds/.png) file for any key (including pointer keys). Mip sidecars
+/// "{stem}_mipN{ext}" next to the file are picked up like for directory replacements.
+ReplacementRegistration register_file_replacement(ReplacementKey key, const std::filesystem::path& path,
+                                                  ReplacementOptions options = {});
 
 ReplacementRegistration register_replacement(ReplacementKey key, RawTextureReplacement replacement,
                                              ReplacementOptions options = {});

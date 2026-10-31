@@ -76,6 +76,7 @@ struct ReplacementEntry {
   std::shared_ptr<VirtualReadState> virtualReadState;
   std::optional<gfx::ConvertedTexture> thumbnail;
   bool thumbnailIncludesBase = false;
+  bool synchronous = false;
 };
 
 enum class Tier {
@@ -1163,7 +1164,7 @@ find_replacement_for_key_locked(const ReplacementKey& key) noexcept {
   erase_cache_locked(key);
   if constexpr (gx::texture::AsyncTextureReplacements) {
     // Raw entry data is borrowed, so they must take the synchronous path.
-    if (entry->kind != EntryKind::Raw) {
+    if (entry->kind != EntryKind::Raw && !entry->synchronous) {
       gfx::TextureHandle thumbnailHandle;
       Tier tier = Tier::Thumbnail;
       if (entry->thumbnail.has_value() && !is_unsupported_texture_format(entry->thumbnail->format) &&
@@ -1351,10 +1352,9 @@ void clear_replacement_runtime_state_locked(std::vector<std::shared_ptr<VirtualR
 
 bool is_source_key(const ReplacementKey& key) noexcept { return std::holds_alternative<TextureSourceKey>(key); }
 
-ReplacementRegistration register_file_replacement(TextureSourceKey key, std::filesystem::path path,
-                                                  ReplacementOptions options) {
+ReplacementRegistration register_file_entry(ReplacementKey replacementKey, std::filesystem::path path,
+                                            ReplacementOptions options) {
   std::lock_guard lk(s_registryMutex);
-  ReplacementKey replacementKey{key};
   ReplacementRegistration registration{
       .id = s_nextRegistrationId++,
       .key = replacementKey,
@@ -1368,10 +1368,14 @@ ReplacementRegistration register_file_replacement(TextureSourceKey key, std::fil
       .kind = EntryKind::File,
       .label = fmt::format("TextureReplacement {}", io::fs_path_to_string(path.filename())),
       .path = std::move(path),
+      .synchronous = options.synchronous,
   });
-  ++s_sourceEntryCount;
-  const auto snapshot = snapshot_entry(replacementKey, entries.back());
-  queue_thumbnail_load(snapshot);
+  if (is_source_key(replacementKey)) {
+    ++s_sourceEntryCount;
+  }
+  if (!options.synchronous) {
+    queue_thumbnail_load(snapshot_entry(replacementKey, entries.back()));
+  }
   erase_cache_locked(replacementKey);
   gx::clear_static_texture_cache();
   return registration;
@@ -1470,6 +1474,14 @@ std::optional<TextureSourceKey> parse_replacement_filename(std::string_view file
       .format = *format,
       .hasTlut = hasTlut,
   };
+}
+
+ReplacementRegistration register_file_replacement(ReplacementKey key, const std::filesystem::path& path,
+                                                  ReplacementOptions options) {
+  if (std::holds_alternative<TexturePointerKey>(key) && std::get<TexturePointerKey>(key).data == nullptr) {
+    return {};
+  }
+  return register_file_entry(std::move(key), path, options);
 }
 
 ReplacementRegistration register_replacement(ReplacementKey key, RawTextureReplacement replacement,
@@ -1675,7 +1687,7 @@ ReplacementGroup load_replacement_directory(const std::filesystem::path& root, R
       continue;
     }
     registeredKeys.insert(*parsed);
-    group.registrations.push_back(register_file_replacement(*parsed, candidate.path, options));
+    group.registrations.push_back(register_file_entry(ReplacementKey{*parsed}, candidate.path, options));
   }
 
   Log.info("Loaded {} texture replacement registrations from {}", group.registrations.size(),
