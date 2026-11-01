@@ -316,33 +316,6 @@ s32 aurora_dvd_base_entry_count() {
   return s_baseEntryCount;
 }
 
-int64_t aurora_dvd_read_base_file(s32 entryNum, uint8_t* buf, size_t len) {
-  if (s_partition == nullptr || entryNum < 0 || entryNum >= s_baseEntryCount) {
-    return -1;
-  }
-  NodHandle* handle = nullptr;
-  if (nod_partition_open_file(s_partition, static_cast<uint32_t>(entryNum), &handle) != NOD_RESULT_OK ||
-      handle == nullptr) {
-    return -1;
-  }
-  int64_t result;
-  if (buf == nullptr) {
-    result = nod_seek(handle, 0, 2);
-  } else {
-    size_t total = 0;
-    while (total < len) {
-      const int64_t got = nod_read(handle, buf + total, len - total);
-      if (got <= 0) {
-        break;
-      }
-      total += static_cast<size_t>(got);
-    }
-    result = static_cast<int64_t>(total);
-  }
-  nod_free(handle);
-  return result;
-}
-
 void aurora_dvd_overlay_files(const AuroraOverlayFile* files, size_t nFiles, s32* outEntryNums) {
   if (!s_overlayCallbacksSet) {
     Log.fatal("aurora_dvd_overlay_callbacks not called before aurora_dvd_overlay_files!");

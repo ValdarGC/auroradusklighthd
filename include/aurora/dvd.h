@@ -122,16 +122,6 @@ void aurora_dvd_overlay_files(const AuroraOverlayFile* files, size_t nFiles, s32
  */
 s32 aurora_dvd_base_entry_count();
 
-/**
- * \brief Reads a file of the base disc, ignoring overlay files.
- *
- * Reads up to `len` bytes from the start of base disc entry `entryNum` (overlaid files keep the entry
- * number of the disc file they replace). With `buf` NULL, returns the file size.
- *
- * Returns the number of bytes read (or the size), or -1 if `entryNum` is not a base disc file.
- */
-int64_t aurora_dvd_read_base_file(s32 entryNum, uint8_t* buf, size_t len);
-
 #ifdef __cplusplus
 }
 #endif

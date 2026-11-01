@@ -142,7 +142,6 @@ uint64_t s_replacementCacheBytes = 0;
 uint64_t s_nextRegistrationId = 1;
 uint64_t s_nextSequence = 1;
 uint32_t s_sourceEntryCount = 0;
-absl::flat_hash_map<const void*, TextureSourceKey> s_pointerSourceAliases;
 
 std::mutex s_jobMutex;
 std::condition_variable s_jobCv;
@@ -1632,29 +1631,6 @@ ReplacementRegistration register_virtual_replacement(std::string_view path, Virt
   return registration;
 }
 
-bool has_source_replacements() {
-  std::lock_guard lk(s_registryMutex);
-  return s_sourceEntryCount != 0;
-}
-
-void set_pointer_source_alias(const void* data, const TextureSourceKey* key) {
-  if (data == nullptr) {
-    return;
-  }
-  std::lock_guard lk(s_registryMutex);
-  if (key != nullptr) {
-    s_pointerSourceAliases[data] = *key;
-  } else if (s_pointerSourceAliases.erase(data) == 0) {
-    return;
-  }
-  erase_cache_locked(ReplacementKey{TexturePointerKey{.data = data}});
-}
-
-void clear_pointer_source_aliases() {
-  std::lock_guard lk(s_registryMutex);
-  s_pointerSourceAliases.clear();
-}
-
 ReplacementGroup load_replacement_directory(const std::filesystem::path& root, ReplacementOptions options) {
   ReplacementGroup group;
   if (root.empty() || !io::create_directories(root)) {
@@ -1865,13 +1841,6 @@ std::optional<ReplacementResult> find_pointer_replacement(const GXTexObj_& obj) 
   }
 
   std::lock_guard lk(s_registryMutex);
-  if (s_sourceEntryCount != 0) {
-    if (const auto alias = s_pointerSourceAliases.find(obj.data); alias != s_pointerSourceAliases.end()) {
-      if (const auto sourceKey = find_source_replacement_key_locked(alias->second)) {
-        return find_replacement_for_key_locked(*sourceKey);
-      }
-    }
-  }
   ReplacementKey pointerKey{TexturePointerKey{.data = obj.data}};
   if (!s_entriesByKey.contains(pointerKey)) {
     return std::nullopt;

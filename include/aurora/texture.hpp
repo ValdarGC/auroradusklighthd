@@ -105,15 +105,6 @@ void reload_replacement_directory(const std::filesystem::path& root, Replacement
 
 bool has_replacement(const GXTexObj* obj, const GXTlutObj* tlut = nullptr);
 
-/// True when any source (hash) replacement is registered.
-bool has_source_replacements();
-
-/// Makes textures at `data` use the replacement of `key` when one is registered (it then wins
-/// over pointer replacements of `data`). For textures whose data is not the one the source key
-/// was hashed from, e.g. loaded from another asset format. A null `key` removes the alias.
-void set_pointer_source_alias(const void* data, const TextureSourceKey* key);
-void clear_pointer_source_aliases();
-
 } // namespace aurora::texture
 
 #endif
